@@ -13,3 +13,7 @@ openai>=1.30.0
 
 # 系统监控工具
 psutil>=5.9.8
+
+# 局域网 Web 控制台与 API 服务
+fastapi>=0.111.0
+uvicorn>=0.30.0

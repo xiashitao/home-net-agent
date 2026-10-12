@@ -27,7 +27,7 @@ class NetworkWatchdog:
 
         self._consecutive_failures = 0
         self._last_daily_report_date: Optional[str] = None
-        self._is_running = False
+        self._stop_event = asyncio.Event()
 
     async def _auto_heal_proxy(self) -> str:
         """自愈逻辑：并发测速并自动切换到最佳可用节点"""
@@ -132,18 +132,27 @@ class NetworkWatchdog:
             logger.info("Watchdog 未启用，跳过后台循环。")
             return
 
-        self._is_running = True
+        self._stop_event.clear()
         logger.info(
             f"Watchdog 守护进程已启动，巡检间隔: {self.config.interval_minutes} 分钟"
         )
 
-        while self._is_running:
+        while not self._stop_event.is_set():
             try:
                 await self.run_single_check()
             except Exception as e:
                 logger.error(f"Watchdog 巡检发生未捕获异常: {e}", exc_info=True)
 
-            await asyncio.sleep(self.config.interval_minutes * 60)
+            try:
+                await asyncio.wait_for(
+                    self._stop_event.wait(),
+                    timeout=self.config.interval_minutes * 60,
+                )
+                # 如果 stop_event 被触发，直接跳出循环退出
+                break
+            except asyncio.TimeoutError:
+                # 正常超时，进行下一次巡检
+                pass
 
     def stop(self):
-        self._is_running = False
+        self._stop_event.set()

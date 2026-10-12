@@ -1,0 +1,1305 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>HomeNet Agent - 家庭网络智能运维</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card-bg: #1e293b;
+      --card-border: #334155;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --primary: #3b82f6;
+      --primary-hover: #2563eb;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background-color: var(--bg);
+      color: var(--text-main);
+      font-family: var(--font);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Header */
+    header {
+      background-color: rgba(30, 41, 59, 0.85);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--card-border);
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      padding: 0.75rem 1rem;
+    }
+    .header-inner {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      font-weight: 700;
+      font-size: 1.15rem;
+      letter-spacing: -0.025em;
+    }
+    .brand-icon {
+      font-size: 1.4rem;
+      line-height: 1;
+    }
+    .header-meta {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      font-size: 0.85rem;
+    }
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.25rem 0.6rem;
+      border-radius: 9999px;
+      font-weight: 500;
+      font-size: 0.78rem;
+    }
+    .status-badge.online { background-color: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); }
+    .status-badge.warning { background-color: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); }
+    .status-badge.danger { background-color: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); }
+    .status-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background-color: currentColor;
+    }
+
+    .lan-pill {
+      background-color: #0f172a;
+      border: 1px solid var(--card-border);
+      padding: 0.25rem 0.6rem;
+      border-radius: 6px;
+      color: var(--text-muted);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      transition: all 0.15s ease;
+    }
+    .lan-pill:hover {
+      border-color: var(--primary);
+      color: var(--text-main);
+    }
+
+    /* Container */
+    main {
+      max-width: 1200px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 1rem;
+      flex: 1;
+    }
+
+    /* Navigation Tabs */
+    .tabs-nav {
+      display: flex;
+      gap: 0.5rem;
+      background-color: var(--card-bg);
+      padding: 0.35rem;
+      border-radius: 10px;
+      border: 1px solid var(--card-border);
+      margin-bottom: 1.25rem;
+      overflow-x: auto;
+    }
+    .tab-btn {
+      flex: 1;
+      min-width: 90px;
+      padding: 0.6rem 0.8rem;
+      border-radius: 8px;
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      font-weight: 500;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.4rem;
+      transition: all 0.2s ease;
+      white-space: nowrap;
+    }
+    .tab-btn:hover { color: var(--text-main); }
+    .tab-btn.active {
+      background-color: var(--primary);
+      color: #fff;
+      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.35);
+    }
+
+    /* Grid Layouts */
+    .grid-4 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1.25rem;
+    }
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 1.25rem;
+      margin-bottom: 1.25rem;
+    }
+
+    /* Cards */
+    .card {
+      background-color: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 1.2rem;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    }
+    .card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 0.85rem;
+    }
+    .card-title {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .card-value {
+      font-size: 1.5rem;
+      font-weight: 700;
+      margin-bottom: 0.35rem;
+    }
+    .card-sub {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    /* Buttons */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      padding: 0.55rem 1rem;
+      border-radius: 8px;
+      border: none;
+      font-size: 0.88rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-primary { background-color: var(--primary); color: #fff; }
+    .btn-primary:hover { background-color: var(--primary-hover); }
+    .btn-secondary { background-color: #334155; color: var(--text-main); }
+    .btn-secondary:hover { background-color: #475569; }
+    .btn-danger { background-color: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); }
+    .btn-danger:hover { background-color: rgba(239, 68, 68, 0.25); }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    /* Diagnosis Banner */
+    .diagnosis-result {
+      padding: 1rem 1.25rem;
+      border-radius: 10px;
+      margin-bottom: 1.25rem;
+      border: 1px solid var(--card-border);
+      background-color: var(--card-bg);
+      display: flex;
+      align-items: flex-start;
+      gap: 1rem;
+    }
+    .diagnosis-result.success { border-color: rgba(16, 185, 129, 0.4); background-color: rgba(16, 185, 129, 0.08); }
+    .diagnosis-result.warning { border-color: rgba(245, 158, 11, 0.4); background-color: rgba(245, 158, 11, 0.08); }
+    .diagnosis-result.danger { border-color: rgba(239, 68, 68, 0.4); background-color: rgba(239, 68, 68, 0.08); }
+
+    /* Mode Selector Buttons */
+    .mode-group {
+      display: flex;
+      gap: 0.5rem;
+      background: #0f172a;
+      padding: 0.35rem;
+      border-radius: 8px;
+      border: 1px solid var(--card-border);
+      margin-bottom: 1rem;
+    }
+    .mode-btn {
+      flex: 1;
+      padding: 0.5rem 0.75rem;
+      border: none;
+      border-radius: 6px;
+      background: transparent;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 0.88rem;
+      font-weight: 500;
+      transition: all 0.2s;
+    }
+    .mode-btn.active {
+      background-color: var(--primary);
+      color: #fff;
+    }
+
+    /* Node List */
+    .node-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 0.75rem;
+      max-height: 480px;
+      overflow-y: auto;
+      padding-right: 0.25rem;
+    }
+    .node-item {
+      background: #0f172a;
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      padding: 0.75rem 0.9rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .node-item:hover {
+      border-color: #475569;
+      background: #1e293b;
+    }
+    .node-item.current {
+      border-color: var(--primary);
+      background: rgba(59, 130, 246, 0.1);
+    }
+    .node-name {
+      font-weight: 500;
+      font-size: 0.88rem;
+      max-width: 170px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .latency-badge {
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 0.15rem 0.45rem;
+      border-radius: 4px;
+    }
+    .latency-fast { background: rgba(16, 185, 129, 0.2); color: #34d399; }
+    .latency-medium { background: rgba(245, 158, 11, 0.2); color: #fbbf24; }
+    .latency-slow { background: rgba(239, 68, 68, 0.2); color: #f87171; }
+
+    /* Tables */
+    .table-container {
+      overflow-x: auto;
+      border-radius: 8px;
+      border: 1px solid var(--card-border);
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+      font-size: 0.85rem;
+    }
+    th {
+      background: #0f172a;
+      color: var(--text-muted);
+      padding: 0.65rem 0.85rem;
+      font-weight: 600;
+      border-bottom: 1px solid var(--card-border);
+    }
+    td {
+      padding: 0.75rem 0.85rem;
+      border-bottom: 1px solid rgba(51, 65, 85, 0.5);
+    }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background-color: rgba(255, 255, 255, 0.02); }
+
+    /* AI Chat */
+    .chat-container {
+      display: flex;
+      flex-direction: column;
+      height: 580px;
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .chat-messages {
+      flex: 1;
+      padding: 1rem;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+    .msg-bubble {
+      max-width: 85%;
+      padding: 0.8rem 1rem;
+      border-radius: 12px;
+      font-size: 0.9rem;
+      line-height: 1.5;
+      word-break: break-word;
+    }
+    .msg-user {
+      align-self: flex-end;
+      background-color: var(--primary);
+      color: #fff;
+      border-bottom-right-radius: 4px;
+    }
+    .msg-agent {
+      align-self: flex-start;
+      background-color: #0f172a;
+      border: 1px solid var(--card-border);
+      color: var(--text-main);
+      border-bottom-left-radius: 4px;
+    }
+    .chat-chips {
+      display: flex;
+      gap: 0.5rem;
+      padding: 0.5rem 1rem;
+      overflow-x: auto;
+      border-top: 1px solid var(--card-border);
+      background: rgba(15, 23, 42, 0.6);
+    }
+    .chip {
+      padding: 0.3rem 0.7rem;
+      background: #1e293b;
+      border: 1px solid var(--card-border);
+      border-radius: 9999px;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.15s;
+    }
+    .chip:hover {
+      color: var(--text-main);
+      border-color: var(--primary);
+    }
+    .chat-input-row {
+      display: flex;
+      gap: 0.5rem;
+      padding: 0.75rem 1rem;
+      background: var(--card-bg);
+      border-top: 1px solid var(--card-border);
+    }
+    .chat-input {
+      flex: 1;
+      background: #0f172a;
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      padding: 0.65rem 0.85rem;
+      color: var(--text-main);
+      font-size: 0.9rem;
+      outline: none;
+    }
+    .chat-input:focus { border-color: var(--primary); }
+
+    /* Toast */
+    .toast-container {
+      position: fixed;
+      bottom: 1.5rem;
+      right: 1.5rem;
+      z-index: 100;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+    .toast {
+      background: #1e293b;
+      border: 1px solid var(--card-border);
+      color: var(--text-main);
+      padding: 0.65rem 1rem;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.4);
+      animation: fadeIn 0.2s ease;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Modal */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.7);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      padding: 1rem;
+    }
+    .modal-box {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      max-width: 420px;
+      width: 100%;
+      padding: 1.5rem;
+      text-align: center;
+    }
+
+    /* Mobile Adjustments */
+    @media (max-width: 640px) {
+      .header-meta { font-size: 0.75rem; }
+      .lan-pill span.desk-only { display: none; }
+      .tab-btn { font-size: 0.82rem; padding: 0.5rem 0.6rem; }
+      .grid-4 { grid-template-columns: 1fr 1fr; }
+      .card-value { font-size: 1.25rem; }
+      .chat-container { height: 70vh; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Header -->
+  <header>
+    <div class="header-inner">
+      <div class="brand">
+        <span class="brand-icon">🏡</span>
+        <span>HomeNet Agent</span>
+      </div>
+
+      <div class="header-meta">
+        <div id="lanPill" class="lan-pill" onclick="showLanQrModal()" title="点击查看局域网访问地址及二维码">
+          <span>📡</span>
+          <span id="lanIpText">局域网访问</span>
+        </div>
+
+        <div id="statusBadge" class="status-badge warning">
+          <span class="status-dot"></span>
+          <span id="statusBadgeText">连接中...</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main>
+    <!-- Navigation Tabs -->
+    <nav class="tabs-nav">
+      <button class="tab-btn active" onclick="switchTab('overview')">
+        <span>📊</span> <span>全网体检</span>
+      </button>
+      <button class="tab-btn" onclick="switchTab('proxies')">
+        <span>⚡</span> <span>节点分流</span>
+      </button>
+      <button class="tab-btn" onclick="switchTab('devices')">
+        <span>📱</span> <span>连网设备</span>
+      </button>
+      <button class="tab-btn" onclick="switchTab('chat')">
+        <span>🤖</span> <span>AI 管家</span>
+      </button>
+    </nav>
+
+    <!-- TAB 1: 网络全网体检 (Overview & Diagnosis) -->
+    <section id="tab-overview">
+      <!-- 4 High Level Metric Cards -->
+      <div class="grid-4">
+        <!-- 局域网连通 -->
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">🏠 局域网旁路由</span>
+            <span id="lanDot" class="status-dot" style="color: var(--text-muted)"></span>
+          </div>
+          <div id="lanLatencyVal" class="card-value">-- ms</div>
+          <div class="card-sub">
+            <span>目标: <span id="lanTargetIp">192.168.1.2</span></span>
+            <span id="lanStatusText">检测中...</span>
+          </div>
+        </div>
+
+        <!-- 国内网络 -->
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">🌐 国内主宽带</span>
+            <span id="domesticDot" class="status-dot" style="color: var(--text-muted)"></span>
+          </div>
+          <div id="domesticLatencyVal" class="card-value">-- ms</div>
+          <div class="card-sub">
+            <span>阿里DNS / 百度</span>
+            <span id="domesticStatusText">检测中...</span>
+          </div>
+        </div>
+
+        <!-- Nikki 代理核心 -->
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">⚡ Nikki (Mihomo)</span>
+            <span id="nikkiDot" class="status-dot" style="color: var(--text-muted)"></span>
+          </div>
+          <div id="nikkiModeVal" class="card-value">--</div>
+          <div class="card-sub">
+            <span>核心: <span id="nikkiVersion">v未知</span></span>
+            <span id="nikkiStatusText">检测中...</span>
+          </div>
+        </div>
+
+        <!-- 海外连通性 -->
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">🌍 海外连通性</span>
+            <span id="overseasDot" class="status-dot" style="color: var(--text-muted)"></span>
+          </div>
+          <div id="nodeDelayVal" class="card-value">-- ms</div>
+          <div class="card-sub">
+            <span id="currentNodeName" style="max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">当前节点</span>
+            <span id="overseasStatusText">检测中...</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Diagnosis Action & Report -->
+      <div class="card" style="margin-bottom: 1.25rem;">
+        <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: gap; margin-bottom: 1rem;">
+          <div>
+            <h3 style="font-size: 1.05rem; font-weight: 600;">全方位分层诊断报告</h3>
+            <p style="font-size: 0.8rem; color: var(--text-muted);" id="lastDiagnosisTime">上次体检时间: 尚未执行</p>
+          </div>
+          <button id="runDiagBtn" class="btn btn-primary" onclick="runDiagnosis()">
+            <span>🚀</span> <span>开始全网体检</span>
+          </button>
+        </div>
+
+        <div id="diagnosisBanner" class="diagnosis-result" style="display: none;">
+          <div style="font-size: 1.6rem;" id="diagIcon">ℹ️</div>
+          <div style="flex: 1;">
+            <div id="diagConclusion" style="font-weight: 600; font-size: 0.95rem; margin-bottom: 0.3rem;">结论</div>
+            <div id="diagAdvice" style="font-size: 0.85rem; color: var(--text-muted);">建议</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- OpenWrt Hardware Status -->
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">🖥️ OpenWrt 旁路由底层系统</span>
+          <button class="btn btn-danger" onclick="confirmRestartNikki()" style="padding: 0.35rem 0.75rem; font-size: 0.8rem;">
+            <span>🔄</span> <span>重启 Nikki 服务</span>
+          </button>
+        </div>
+        <div class="grid-4" style="margin-bottom: 0;">
+          <div>
+            <div style="font-size: 0.8rem; color: var(--text-muted);">运行时间</div>
+            <div id="owUptime" style="font-weight: 600; margin-top: 0.2rem;">--</div>
+          </div>
+          <div>
+            <div style="font-size: 0.8rem; color: var(--text-muted);">固件版本</div>
+            <div id="owRelease" style="font-weight: 600; margin-top: 0.2rem;">--</div>
+          </div>
+          <div>
+            <div style="font-size: 0.8rem; color: var(--text-muted);">系统负载 (Load)</div>
+            <div id="owLoad" style="font-weight: 600; margin-top: 0.2rem;">--</div>
+          </div>
+          <div>
+            <div style="font-size: 0.8rem; color: var(--text-muted);">内存使用</div>
+            <div id="owMemory" style="font-weight: 600; margin-top: 0.2rem;">--</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 2: 节点与分流 (Proxies & Rules) -->
+    <section id="tab-proxies" style="display: none;">
+      <!-- Mode Selection -->
+      <div class="card" style="margin-bottom: 1.25rem;">
+        <div class="card-header">
+          <span class="card-title">🔀 旁路由运行模式切换</span>
+          <span style="font-size: 0.8rem; color: var(--text-muted);">点击即时生效</span>
+        </div>
+        <div class="mode-group">
+          <button class="mode-btn" id="modeRule" onclick="setMode('Rule')">
+            <b>Rule</b> 规则分流
+          </button>
+          <button class="mode-btn" id="modeGlobal" onclick="setMode('Global')">
+            <b>Global</b> 全局代理
+          </button>
+          <button class="mode-btn" id="modeDirect" onclick="setMode('Direct')">
+            <b>Direct</b> 全部直连
+          </button>
+        </div>
+        <p style="font-size: 0.8rem; color: var(--text-muted);">
+          💡 提示：<b>Rule 规则分流</b> 是最常用模式，国内流量直接放行，访问境外站点通过选定节点加速。
+        </p>
+      </div>
+
+      <!-- Proxy Groups and Nodes -->
+      <div class="card">
+        <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1rem;">
+          <div style="display: flex; align-items: center; gap: 0.75rem;">
+            <span style="font-weight: 600; font-size: 0.95rem;">策略组:</span>
+            <select id="groupSelect" onchange="onGroupChange()" style="background: #0f172a; border: 1px solid var(--card-border); color: var(--text-main); padding: 0.45rem 0.75rem; border-radius: 6px; font-size: 0.88rem; outline: none;">
+              <option value="">加载中...</option>
+            </select>
+          </div>
+          <button id="testNodesBtn" class="btn btn-secondary" onclick="testCurrentGroupNodes()">
+            <span>⚡</span> <span>批量并发测速</span>
+          </button>
+        </div>
+
+        <div id="nodeGrid" class="node-grid">
+          <!-- 动态渲染节点卡片 -->
+          <div style="color: var(--text-muted); font-size: 0.85rem; padding: 1rem;">正在加载策略组与节点...</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 3: 连网设备与流量 (Devices & Traffic) -->
+    <section id="tab-devices" style="display: none;">
+      <!-- WiFi Clients -->
+      <div class="card" style="margin-bottom: 1.25rem;">
+        <div class="card-header">
+          <span class="card-title">
+            <span>📶 专属 WiFi 连网终端</span>
+            <span id="wifiCountBadge" class="status-badge online" style="font-size: 0.75rem;">0 台在线</span>
+          </span>
+          <button class="btn btn-secondary" onclick="loadDevices()" style="padding: 0.35rem 0.75rem; font-size: 0.8rem;">
+            <span>🔄</span> <span>刷新</span>
+          </button>
+        </div>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>设备名称 / 主机名</th>
+                <th>局域网 IP</th>
+                <th>MAC 地址</th>
+                <th>信号强度</th>
+              </tr>
+            </thead>
+            <tbody id="wifiDeviceTableBody">
+              <tr><td colspan="4" style="text-align: center; color: var(--text-muted);">暂无设备或加载中...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Traffic & Connections -->
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">📊 活跃连接与设备流量排行</span>
+          <div style="font-size: 0.8rem; color: var(--text-muted);">
+            总连接: <b id="totalConnsText">0</b> | 下行: <b id="totalDownText">0 MB</b> | 上行: <b id="totalUpText">0 MB</b>
+          </div>
+        </div>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>终端 IP</th>
+                <th>活跃连接</th>
+                <th>下行流量</th>
+                <th>上行流量</th>
+                <th>访问域名采样</th>
+              </tr>
+            </thead>
+            <tbody id="trafficTableBody">
+              <tr><td colspan="5" style="text-align: center; color: var(--text-muted);">加载中...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 4: AI 管家 (AI Chat Assistant) -->
+    <section id="tab-chat" style="display: none;">
+      <div class="chat-container">
+        <!-- Messages Flow -->
+        <div id="chatMessages" class="chat-messages">
+          <div class="msg-bubble msg-agent">
+            👋 你好！我是你的家庭网络智能管家 (HomeNet Agent)。<br>
+            我可以帮你进行<b>一键全网体检、测速换节点、排查掉线问题</b>，也可以监控专属 WiFi 的连接设备。直接告诉我你的需求吧！
+          </div>
+        </div>
+
+        <!-- Suggestion Chips -->
+        <div class="chat-chips">
+          <div class="chip" onclick="sendQuickPrompt('帮我做一次全方位的网络体检')">🚀 一键网络体检</div>
+          <div class="chip" onclick="sendQuickPrompt('帮我测速并切换到延迟最低的节点')">⚡ 测速换最快节点</div>
+          <div class="chip" onclick="sendQuickPrompt('看看专属WiFi现在有哪些设备连着')">📱 查看连接设备</div>
+          <div class="chip" onclick="sendQuickPrompt('网络有点卡，帮我诊断一下原因')">🔍 排查网络卡顿</div>
+        </div>
+
+        <!-- Input Box -->
+        <div class="chat-input-row">
+          <input id="chatInput" type="text" class="chat-input" placeholder="输入你想咨询或操作的内容，按回车发送..." onkeydown="handleChatKey(event)">
+          <button id="chatSendBtn" class="btn btn-primary" onclick="sendMessage()">
+            <span>发送</span>
+          </button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Modal: LAN Access Info & QR -->
+  <div id="lanModal" class="modal-backdrop" onclick="closeLanModal(event)">
+    <div class="modal-box" onclick="event.stopPropagation()">
+      <h3 style="font-size: 1.1rem; margin-bottom: 0.5rem;">📱 局域网外部设备访问</h3>
+      <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem;">
+        手机、平板或同局域网电脑均可直接通过以下地址打开管理控制台：
+      </p>
+
+      <div id="lanUrlsList" style="margin-bottom: 1rem; text-align: left; display: flex; flex-direction: column; gap: 0.5rem;">
+        <!-- 动态生成 URL 复制卡片 -->
+      </div>
+
+      <div id="qrCanvasContainer" style="display: flex; justify-content: center; margin-bottom: 1rem;">
+        <!-- SVG QR code placeholder -->
+      </div>
+
+      <button class="btn btn-secondary" onclick="closeLanModal()" style="width: 100%;">
+        关闭
+      </button>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div id="toastContainer" class="toast-container"></div>
+
+  <script>
+    // Global State
+    let currentTab = 'overview';
+    let serverInfo = null;
+    let proxyGroups = [];
+    let currentGroup = '';
+    let chatHistory = [];
+    let isTestingNodes = false;
+    let isDiagnosing = false;
+
+    // Toast utility
+    function showToast(message, type = 'info') {
+      const container = document.getElementById('toastContainer');
+      const toast = document.createElement('div');
+      toast.className = 'toast';
+      toast.textContent = message;
+      container.appendChild(toast);
+      setTimeout(() => {
+        toast.style.opacity = '0';
+        setTimeout(() => toast.remove(), 200);
+      }, 3000);
+    }
+
+    // Switch Tabs
+    function switchTab(tabId) {
+      currentTab = tabId;
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('main > section').forEach(s => s.style.display = 'none');
+
+      const targetSection = document.getElementById(`tab-${tabId}`);
+      if (targetSection) targetSection.style.display = 'block';
+
+      // Highlight active button
+      const buttons = document.querySelectorAll('.tab-btn');
+      if (tabId === 'overview') buttons[0].classList.add('active');
+      else if (tabId === 'proxies') { buttons[1].classList.add('active'); loadProxies(); }
+      else if (tabId === 'devices') { buttons[2].classList.add('active'); loadDevices(); }
+      else if (tabId === 'chat') { buttons[3].classList.add('active'); }
+    }
+
+    // Initialize Page
+    async function init() {
+      await loadServerInfo();
+      await loadStatusOverview();
+      // 启动轻量定时轮询 (每 15 秒更新一次简要状态)
+      setInterval(loadStatusOverview, 15000);
+    }
+
+    // Load Server Info (LAN IPs, port, etc.)
+    async function loadServerInfo() {
+      try {
+        const res = await fetch('/api/info');
+        serverInfo = await res.json();
+        if (serverInfo.lan_ips && serverInfo.lan_ips.length > 0) {
+          const primaryIp = serverInfo.lan_ips[0];
+          document.getElementById('lanIpText').textContent = `${primaryIp}:${serverInfo.port}`;
+          document.getElementById('lanTargetIp').textContent = serverInfo.openwrt_host || '192.168.1.2';
+        }
+      } catch (e) {
+        console.error('获取服务器基础信息失败', e);
+      }
+    }
+
+    // Load Overall Status
+    async function loadStatusOverview() {
+      try {
+        const res = await fetch('/api/status');
+        const data = await res.json();
+
+        // Update Nikki info
+        const nikki = data.nikki || {};
+        document.getElementById('nikkiModeVal').textContent = nikki.mode || '--';
+        document.getElementById('nikkiVersion').textContent = nikki.version || '未知';
+        const nikkiDot = document.getElementById('nikkiDot');
+        if (nikki.online) {
+          nikkiDot.style.color = 'var(--success)';
+          document.getElementById('nikkiStatusText').textContent = 'API 正常';
+        } else {
+          nikkiDot.style.color = 'var(--danger)';
+          document.getElementById('nikkiStatusText').textContent = '离线/未响应';
+        }
+
+        // Active node
+        if (data.current_node) {
+          document.getElementById('currentNodeName').textContent = data.current_node;
+        }
+
+        // OpenWrt system
+        const ow = data.openwrt || {};
+        if (ow.online) {
+          document.getElementById('owUptime').textContent = ow.uptime || '--';
+          document.getElementById('owRelease').textContent = ow.release || '--';
+          document.getElementById('owLoad').textContent = ow.load || '--';
+        }
+
+        // Top Status Badge
+        const badge = document.getElementById('statusBadge');
+        const badgeText = document.getElementById('statusBadgeText');
+        if (nikki.online && ow.online) {
+          badge.className = 'status-badge online';
+          badgeText.textContent = '运行正常';
+        } else if (nikki.online || ow.online) {
+          badge.className = 'status-badge warning';
+          badgeText.textContent = '部分服务异常';
+        } else {
+          badge.className = 'status-badge danger';
+          badgeText.textContent = '旁路由离线';
+        }
+
+        // Sync mode buttons
+        if (nikki.mode) {
+          updateModeButtons(nikki.mode);
+        }
+      } catch (e) {
+        const badge = document.getElementById('statusBadge');
+        badge.className = 'status-badge danger';
+        document.getElementById('statusBadgeText').textContent = '连接中断';
+      }
+    }
+
+    // Run Full Diagnosis
+    async function runDiagnosis() {
+      if (isDiagnosing) return;
+      isDiagnosing = true;
+      const btn = document.getElementById('runDiagBtn');
+      btn.disabled = true;
+      btn.innerHTML = '<span>⏳</span> <span>正在体检中...</span>';
+
+      try {
+        const res = await fetch('/api/diagnosis');
+        const report = await res.json();
+
+        // Update LAN Card
+        const lan = report.lan || {};
+        document.getElementById('lanLatencyVal').textContent = lan.alive ? `${lan.latency_ms || 1} ms` : '断开';
+        document.getElementById('lanDot').style.color = lan.alive ? 'var(--success)' : 'var(--danger)';
+        document.getElementById('lanStatusText').textContent = lan.alive ? '局域网通畅' : '无法连通';
+
+        // Update Domestic Card
+        const dom = report.domestic || {};
+        const domLatency = dom.dns_latency_ms || dom.http_latency_ms || 25;
+        document.getElementById('domesticLatencyVal').textContent = dom.alive ? `${domLatency} ms` : '断开';
+        document.getElementById('domesticDot').style.color = dom.alive ? 'var(--success)' : 'var(--danger)';
+        document.getElementById('domesticStatusText').textContent = dom.alive ? '光猫宽带正常' : '国内网络异常';
+
+        // Update Overseas Card
+        const os = report.overseas || {};
+        const proxySrv = report.proxy_service || {};
+        const nodeDelay = proxySrv.node_delay_ms || os.latency_ms;
+        document.getElementById('nodeDelayVal').textContent = nodeDelay ? `${nodeDelay} ms` : (os.alive ? '可用' : '不可达');
+        document.getElementById('overseasDot').style.color = os.alive ? 'var(--success)' : 'var(--danger)';
+        document.getElementById('overseasStatusText').textContent = os.alive ? '外网代理正常' : '节点无法访问';
+        if (proxySrv.current_node) {
+          document.getElementById('currentNodeName').textContent = proxySrv.current_node;
+        }
+
+        // Render Report Banner
+        const banner = document.getElementById('diagnosisBanner');
+        banner.style.display = 'flex';
+        const isAllOk = lan.alive && dom.alive && proxySrv.alive && os.alive;
+        if (isAllOk) {
+          banner.className = 'diagnosis-result success';
+          document.getElementById('diagIcon').textContent = '✅';
+        } else if (!lan.alive || !dom.alive) {
+          banner.className = 'diagnosis-result danger';
+          document.getElementById('diagIcon').textContent = '🚨';
+        } else {
+          banner.className = 'diagnosis-result warning';
+          document.getElementById('diagIcon').textContent = '⚠️';
+        }
+
+        document.getElementById('diagConclusion').textContent = report.conclusion || '诊断完成';
+        document.getElementById('diagAdvice').textContent = `行动建议: ${report.action_advice || '无'}`;
+        document.getElementById('lastDiagnosisTime').textContent = `上次体检时间: ${report.timestamp}`;
+
+        showToast('网络全网分层体检完成！', 'success');
+      } catch (e) {
+        showToast('体检执行失败: ' + e.message, 'error');
+      } finally {
+        isDiagnosing = false;
+        btn.disabled = false;
+        btn.innerHTML = '<span>🚀</span> <span>开始全网体检</span>';
+      }
+    }
+
+    // Mode Setting
+    function updateModeButtons(mode) {
+      ['Rule', 'Global', 'Direct'].forEach(m => {
+        const btn = document.getElementById(`mode${m}`);
+        if (btn) {
+          if (m.toLowerCase() === mode.toLowerCase()) btn.classList.add('active');
+          else btn.classList.remove('active');
+        }
+      });
+    }
+
+    async function setMode(mode) {
+      try {
+        const res = await fetch('/api/proxies/mode', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ mode })
+        });
+        const data = await res.json();
+        if (data.success) {
+          updateModeButtons(mode);
+          document.getElementById('nikkiModeVal').textContent = mode;
+          showToast(`代理模式已切换为: ${mode}`, 'success');
+        } else {
+          showToast(`切换失败: ${data.error || '未知错误'}`, 'error');
+        }
+      } catch (e) {
+        showToast('请求失败: ' + e.message, 'error');
+      }
+    }
+
+    // Load Proxies & Nodes
+    async function loadProxies() {
+      try {
+        const res = await fetch('/api/proxies');
+        const data = await res.json();
+        if (data.groups) {
+          proxyGroups = data.groups;
+          const select = document.getElementById('groupSelect');
+          select.innerHTML = '';
+          proxyGroups.forEach(g => {
+            const opt = document.createElement('option');
+            opt.value = g.name;
+            opt.textContent = `${g.name} (${g.now})`;
+            select.appendChild(opt);
+          });
+
+          // 优选主策略组
+          const def = proxyGroups.find(g => ['GLOBAL', 'PROXY', '节点选择', '默认'].includes(g.name)) || proxyGroups[0];
+          if (def) {
+            select.value = def.name;
+            currentGroup = def.name;
+            renderNodes(def.all || [], def.now);
+          }
+        }
+      } catch (e) {
+        console.error('加载代理组失败', e);
+      }
+    }
+
+    function onGroupChange() {
+      const select = document.getElementById('groupSelect');
+      currentGroup = select.value;
+      const grp = proxyGroups.find(g => g.name === currentGroup);
+      if (grp) {
+        renderNodes(grp.all || [], grp.now);
+      }
+    }
+
+    function renderNodes(nodes, currentNode, testResults = null) {
+      const grid = document.getElementById('nodeGrid');
+      grid.innerHTML = '';
+
+      if (!nodes || nodes.length === 0) {
+        grid.innerHTML = '<div style="color: var(--text-muted); padding: 1rem;">该策略组下暂无节点</div>';
+        return;
+      }
+
+      nodes.forEach(nodeName => {
+        const isCurrent = nodeName === currentNode;
+        const card = document.createElement('div');
+        card.className = `node-item ${isCurrent ? 'current' : ''}`;
+
+        // Check if we have test result for this node
+        let latencyBadge = '';
+        if (testResults) {
+          const item = testResults.find(r => r.node === nodeName);
+          if (item) {
+            if (item.alive && item.delay > 0) {
+              const cls = item.delay < 200 ? 'latency-fast' : (item.delay < 500 ? 'latency-medium' : 'latency-slow');
+              latencyBadge = `<span class="latency-badge ${cls}">${item.delay} ms</span>`;
+            } else {
+              latencyBadge = `<span class="latency-badge latency-slow">超时</span>`;
+            }
+          }
+        }
+
+        card.innerHTML = `
+          <div>
+            <div class="node-name" title="${nodeName}">${nodeName}</div>
+            <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.2rem;">
+              ${isCurrent ? '<b style="color: #60a5fa;">✓ 当前使用中</b>' : '备选节点'}
+            </div>
+          </div>
+          <div style="display: flex; align-items: center; gap: 0.5rem;">
+            ${latencyBadge}
+            ${!isCurrent ? `<button class="btn btn-secondary" style="padding: 0.25rem 0.55rem; font-size: 0.75rem;" onclick="selectNode('${nodeName}', event)">切换</button>` : ''}
+          </div>
+        `;
+
+        card.onclick = (e) => {
+          if (!isCurrent) selectNode(nodeName, e);
+        };
+
+        grid.appendChild(card);
+      });
+    }
+
+    async function testCurrentGroupNodes() {
+      if (isTestingNodes || !currentGroup) return;
+      isTestingNodes = true;
+      const btn = document.getElementById('testNodesBtn');
+      btn.disabled = true;
+      btn.innerHTML = '<span>⏳</span> <span>正在批量测速...</span>';
+
+      try {
+        const res = await fetch(`/api/proxies/nodes/test?group=${encodeURIComponent(currentGroup)}`);
+        const data = await res.json();
+        if (data.nodes) {
+          const grp = proxyGroups.find(g => g.name === currentGroup);
+          const sortedNodeNames = data.nodes.map(n => n.node);
+          renderNodes(sortedNodeNames, grp ? grp.now : '', data.nodes);
+          showToast(`已完成 ${data.nodes.length} 个节点测速！`, 'success');
+        } else {
+          showToast(`测速失败: ${data.error || '未知错误'}`, 'error');
+        }
+      } catch (e) {
+        showToast('测速请求异常: ' + e.message, 'error');
+      } finally {
+        isTestingNodes = false;
+        btn.disabled = false;
+        btn.innerHTML = '<span>⚡</span> <span>批量并发测速</span>';
+      }
+    }
+
+    async function selectNode(nodeName, e) {
+      if (e) e.stopPropagation();
+      try {
+        const res = await fetch('/api/proxies/nodes/select', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ group: currentGroup, node: nodeName })
+        });
+        const data = await res.json();
+        if (data.success) {
+          showToast(`已切换至: ${nodeName}`, 'success');
+          // 更新本地数据
+          const grp = proxyGroups.find(g => g.name === currentGroup);
+          if (grp) grp.now = nodeName;
+          document.getElementById('currentNodeName').textContent = nodeName;
+          renderNodes(grp.all || [], nodeName);
+        } else {
+          showToast(`切换失败: ${data.error}`, 'error');
+        }
+      } catch (err) {
+        showToast('请求异常: ' + err.message, 'error');
+      }
+    }
+
+    // Load Devices & Traffic
+    async function loadDevices() {
+      try {
+        const res = await fetch('/api/devices');
+        const data = await res.json();
+
+        // 1. WiFi Devices
+        const wifiClients = data.wifi_clients || [];
+        document.getElementById('wifiCountBadge').textContent = `${wifiClients.length} 台在线`;
+        const wifiTbody = document.getElementById('wifiDeviceTableBody');
+        wifiTbody.innerHTML = '';
+
+        if (wifiClients.length === 0) {
+          wifiTbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: var(--text-muted);">暂无设备连接专属 WiFi</td></tr>';
+        } else {
+          wifiClients.forEach(c => {
+            const tr = document.createElement('tr');
+            const sig = c.signal_dbm !== undefined ? `${c.signal_dbm} dBm` : '未知';
+            tr.innerHTML = `
+              <td><b>${c.hostname || '未知设备'}</b></td>
+              <td><code>${c.ip || '--'}</code></td>
+              <td style="color: var(--text-muted); font-size: 0.8rem;">${c.mac || '--'}</td>
+              <td><span class="status-badge ${c.signal_dbm > -65 ? 'online' : 'warning'}">${sig}</span></td>
+            `;
+            wifiTbody.appendChild(tr);
+          });
+        }
+
+        // 2. Traffic
+        const traffic = data.traffic || {};
+        document.getElementById('totalConnsText').textContent = traffic.total_connections || 0;
+        document.getElementById('totalDownText').textContent = `${traffic.total_download_mb || 0} MB`;
+        document.getElementById('totalUpText').textContent = `${traffic.total_upload_mb || 0} MB`;
+
+        const trafTbody = document.getElementById('trafficTableBody');
+        trafTbody.innerHTML = '';
+        const devices = traffic.devices || [];
+
+        if (devices.length === 0) {
+          trafTbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--text-muted);">当前无活跃连接</td></tr>';
+        } else {
+          devices.forEach(d => {
+            const tr = document.createElement('tr');
+            const domains = (d.sample_domains || []).slice(0, 3).join(', ') || '直连IP';
+            tr.innerHTML = `
+              <td><b>${d.ip}</b></td>
+              <td>${d.connections_count}</td>
+              <td style="color: #60a5fa;">${d.download_mb} MB</td>
+              <td style="color: #34d399;">${d.upload_mb} MB</td>
+              <td style="max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-muted);" title="${domains}">${domains}</td>
+            `;
+            trafTbody.appendChild(tr);
+          });
+        }
+      } catch (e) {
+        console.error('加载设备与流量失败', e);
+      }
+    }
+
+    // OpenWrt Nikki Restart
+    async function confirmRestartNikki() {
+      if (!confirm('确定要在 OpenWrt 旁路由上重启 Nikki (Mihomo) 服务吗？')) return;
+      try {
+        const res = await fetch('/api/system/restart-nikki', { method: 'POST' });
+        const data = await res.json();
+        showToast(data.message || '指令已下发', 'info');
+      } catch (e) {
+        showToast('重启失败: ' + e.message, 'error');
+      }
+    }
+
+    // AI Chat
+    function handleChatKey(e) {
+      if (e.key === 'Enter') sendMessage();
+    }
+
+    function sendQuickPrompt(promptText) {
+      document.getElementById('chatInput').value = promptText;
+      sendMessage();
+    }
+
+    async function sendMessage() {
+      const input = document.getElementById('chatInput');
+      const text = input.value.trim();
+      if (!text) return;
+
+      input.value = '';
+      const box = document.getElementById('chatMessages');
+
+      // Append user bubble
+      const userBubble = document.createElement('div');
+      userBubble.className = 'msg-bubble msg-user';
+      userBubble.textContent = text;
+      box.appendChild(userBubble);
+
+      // Append typing bubble
+      const typingBubble = document.createElement('div');
+      typingBubble.className = 'msg-bubble msg-agent';
+      typingBubble.innerHTML = '<span>🤖 正在思考与调用工具排障...</span>';
+      box.appendChild(typingBubble);
+      box.scrollTop = box.scrollHeight;
+
+      // Call API
+      try {
+        const res = await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: text, history: chatHistory })
+        });
+        const data = await res.json();
+        const reply = data.reply || '处理完成';
+
+        // Format markdown-like text (simple linebreaks & bolding)
+        const formatted = reply
+          .replace(/\*\*(.*?)\*\*/g, '<b>$1</b>')
+          .replace(/\n/g, '<br>');
+
+        typingBubble.innerHTML = formatted;
+
+        // Record history
+        chatHistory.push({ role: 'user', content: text });
+        chatHistory.push({ role: 'assistant', content: reply });
+        if (chatHistory.length > 10) chatHistory = chatHistory.slice(-10);
+      } catch (err) {
+        typingBubble.innerHTML = `<span style="color: #f87171;">⚠️ 回复生成失败: ${err.message}</span>`;
+      }
+      box.scrollTop = box.scrollHeight;
+    }
+
+    // LAN Access Modal
+    function showLanQrModal() {
+      const modal = document.getElementById('lanModal');
+      const list = document.getElementById('lanUrlsList');
+      list.innerHTML = '';
+
+      if (serverInfo && serverInfo.lan_ips) {
+        serverInfo.lan_ips.forEach(ip => {
+          const url = `http://${ip}:${serverInfo.port}`;
+          const item = document.createElement('div');
+          item.style.background = '#0f172a';
+          item.style.padding = '0.5rem 0.75rem';
+          item.style.borderRadius = '6px';
+          item.style.border = '1px solid var(--card-border)';
+          item.style.display = 'flex';
+          item.style.alignItems = 'center';
+          item.style.justifyContent = 'space-between';
+          item.innerHTML = `
+            <span style="font-family: monospace; font-size: 0.9rem;">${url}</span>
+            <button class="btn btn-secondary" style="padding: 0.2rem 0.5rem; font-size: 0.75rem;" onclick="copyUrl('${url}')">复制</button>
+          `;
+          list.appendChild(item);
+        });
+      }
+      modal.style.display = 'flex';
+    }
+
+    function closeLanModal(e) {
+      document.getElementById('lanModal').style.display = 'none';
+    }
+
+    function copyUrl(url) {
+      navigator.clipboard.writeText(url).then(() => {
+        showToast('地址已复制到剪贴板！', 'success');
+      }).catch(() => {
+        showToast('复制失败，请手动长按复制', 'warning');
+      });
+    }
+
+    // Start
+    window.addEventListener('DOMContentLoaded', init);
+  </script>
+</body>
+</html>

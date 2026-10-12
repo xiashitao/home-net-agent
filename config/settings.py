@@ -48,12 +48,19 @@ class WatchdogConfig(BaseModel):
     daily_report_time: str = "09:00"
 
 
+class WebConfig(BaseModel):
+    enabled: bool = True
+    host: str = "0.0.0.0"
+    port: int = 8080
+
+
 class Settings(BaseModel):
     nikki: NikkiConfig = Field(default_factory=NikkiConfig)
     openwrt: OpenWrtConfig = Field(default_factory=OpenWrtConfig)
     llm: LLMConfig = Field(default_factory=LLMConfig)
     feishu: FeishuConfig = Field(default_factory=FeishuConfig)
     watchdog: WatchdogConfig = Field(default_factory=WatchdogConfig)
+    web: WebConfig = Field(default_factory=WebConfig)
 
 
 _cached_settings: Optional[Settings] = None

@@ -6,6 +6,7 @@ import asyncio
 import logging
 import signal
 import sys
+import uvicorn
 from agent.brain import NetworkAgentBrain
 from agent.tools import NetworkTools
 from bot.feishu_bot import FeishuBotService
@@ -14,6 +15,7 @@ from core.diagnostics import NetworkDiagnostics
 from core.nikki_client import NikkiClient
 from core.openwrt_client import OpenWrtClient
 from watcher.watchdog import NetworkWatchdog
+from web.server import create_web_app, get_lan_ips
 
 logging.basicConfig(
     level=logging.INFO,
@@ -62,12 +64,44 @@ async def main():
             "未配置 Feishu app_id / app_secret，跳过飞书机器人启动 (仅作为本地看门狗运行)。"
         )
 
-    # 7. 优雅停机信号处理
+    # 7. 启动局域网 Web 控制台服务
+    web_server = None
+    web_task = None
+    if settings.web.enabled:
+        web_app = create_web_app(
+            settings=settings,
+            nikki=nikki,
+            openwrt=openwrt,
+            diagnostics=diagnostics,
+            brain=brain,
+            watchdog=watchdog,
+        )
+        uv_config = uvicorn.Config(
+            app=web_app,
+            host=settings.web.host,
+            port=settings.web.port,
+            log_level="warning",
+            access_log=False,
+        )
+        web_server = uvicorn.Server(uv_config)
+        web_task = asyncio.create_task(web_server.serve())
+
+        lan_ips = get_lan_ips()
+        logger.info("==========================================")
+        logger.info(" 局域网 Web 控制台已启动:")
+        logger.info(f"   👉 本机访问:   http://127.0.0.1:{settings.web.port}")
+        for ip in lan_ips:
+            logger.info(f"   👉 局域网访问: http://{ip}:{settings.web.port}")
+        logger.info("==========================================")
+
+    # 8. 优雅停机信号处理
     stop_event = asyncio.Event()
 
     def _signal_handler():
         logger.info("接收到退出信号，正在停止所有后台任务...")
         watchdog.stop()
+        if web_server:
+            web_server.should_exit = True
         stop_event.set()
 
     for sig in (signal.SIGINT, signal.SIGTERM):
@@ -76,7 +110,7 @@ async def main():
         except NotImplementedError:
             pass
 
-    # 8. 启动巡检循环并常驻运行
+    # 9. 启动巡检循环并常驻运行
     watchdog_task = asyncio.create_task(watchdog.start())
 
     logger.info("系统初始化完毕，主守护进程已进入常驻监听状态。")
@@ -84,6 +118,10 @@ async def main():
         await stop_event.wait()
     finally:
         watchdog.stop()
+        if web_server:
+            web_server.should_exit = True
+        if web_task:
+            await web_task
         await watchdog_task
         logger.info("服务已安全退出。")
 
