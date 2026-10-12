@@ -1,0 +1,14 @@
+version: '3.8'
+
+services:
+  home-net-agent:
+    build: .
+    container_name: home-net-agent
+    restart: unless-stopped
+    # 采用 host 网络模式，以便容器直接访问宿主机局域网，执行无损 Ping 和设备探测
+    network_mode: "host"
+    volumes:
+      - ./config/config.yaml:/app/config/config.yaml:ro
+      - /etc/localtime:/etc/localtime:ro
+    environment:
+      - TZ=Asia/Shanghai

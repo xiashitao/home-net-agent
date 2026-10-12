@@ -1,0 +1,19 @@
+# 敏感配置文件
+config/config.yaml
+*.env
+*.key
+
+# 编译与缓存
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+
+# 虚拟环境
+.venv/
+venv/
+ENV/
+
+# 操作系统文件
+.DS_Store
+Thumbs.db
