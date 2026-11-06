@@ -134,6 +134,15 @@ docker compose up -d --build
 docker compose logs -f
 ```
 
+### 🔄 日常更新（已内置一键脚本）
+开发机推送代码后，在服务器上执行：
+```bash
+./update.sh
+```
+脚本会自动完成：环境检查 → 暂存本地改动 → 拉取最新代码 → **配置漂移检测（提醒补充新版新增的配置段）** → 重建容器 → Web 控制台健康检查，并输出回滚命令。
+
+> ⚠️ `config/config.yaml` 被 gitignore 且由 volume 挂载，更新永远不会覆盖它；新增配置项（如受保护服务护栏 `protected_services`）脚本会提醒你参考 `config.example.yaml` 手动补充。
+
 ---
 
 ## 🖥️ 局域网 Web 控制台 (支持手机 / 电脑随时访问)
