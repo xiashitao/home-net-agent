@@ -1,0 +1,29 @@
+# 版本控制与本地虚拟环境 (体积大且运行时无用)
+.git
+.gitignore
+.venv
+venv
+__pycache__/
+*.py[cod]
+*.pyc
+.pytest_cache/
+
+# 系统与编辑器文件
+.DS_Store
+Thumbs.db
+.idea
+.vscode
+
+# 敏感配置 (运行时由 docker-compose volume 挂载提供，不应固化进镜像)
+config/config.yaml
+
+# 与项目无关的本地资料
+吉利星愿锁车音效包/
+
+# 本地联调脚本 (镜像内不需要)
+run_test.py
+
+# Docker 自身文件
+Dockerfile
+docker-compose.yml
+.dockerignore

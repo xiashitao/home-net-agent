@@ -38,11 +38,18 @@ async def main():
     openwrt = OpenWrtClient(settings.openwrt)
     diagnostics = NetworkDiagnostics(nikki, bypass_ip=settings.nikki.host)
 
-    # 3. 初始化 Agent 工具集与大模型大脑
+    # 3. 初始化 Agent 工具集与大模型大脑 (携带受保护服务护栏规则)
     tools = NetworkTools(
-        nikki=nikki, openwrt=openwrt, diagnostics=diagnostics
+        nikki=nikki,
+        openwrt=openwrt,
+        diagnostics=diagnostics,
+        protected_services=settings.protected_services,
     )
-    brain = NetworkAgentBrain(config=settings.llm, tools=tools)
+    brain = NetworkAgentBrain(
+        config=settings.llm,
+        tools=tools,
+        protected_services=settings.protected_services,
+    )
 
     # 4. 初始化飞书机器人服务
     feishu_bot = FeishuBotService(config=settings.feishu, brain=brain)

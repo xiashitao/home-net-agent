@@ -132,6 +132,92 @@ class NikkiClient:
         )
         return True
 
+    async def find_connections_by_keyword(self, keyword: str) -> Dict[str, Any]:
+        """按域名/目标 IP 关键词筛选活跃连接，并汇总其实际出口链路 (代理节点或直连)
+
+        用于回答 "某网站/App 的流量走的是代理还是直连" 这类问题。
+        chains[0] 为实际出口 (节点名或 DIRECT)，末位为顶层策略组。
+        """
+        res = await self._request("GET", "/connections")
+        connections = res.get("connections", [])
+        kw = keyword.strip().lower()
+
+        matched: List[Dict[str, Any]] = []
+        for conn in connections:
+            metadata = conn.get("metadata", {})
+            host = metadata.get("host") or ""
+            dst_ip = metadata.get("destinationIP") or ""
+            # 同时匹配域名 (SNI) 与目标 IP，覆盖视频 CDN 常见的纯 IP 直连流量
+            if kw not in host.lower() and kw not in dst_ip.lower():
+                continue
+
+            chains = conn.get("chains", [])
+            rule = conn.get("rule", "")
+            rule_payload = conn.get("rulePayload", "")
+            matched.append(
+                {
+                    "host": host or f"[纯IP] {dst_ip}",
+                    "destination": f"{dst_ip}:{metadata.get('destinationPort', '')}",
+                    "source_device_ip": metadata.get("sourceIP"),
+                    "network": metadata.get("network", ""),
+                    "rule": f"{rule},{rule_payload}" if rule_payload else rule,
+                    "route": chains[0] if chains else "DIRECT",
+                    "chains": chains,
+                    "download_mb": round(conn.get("download", 0) / (1024 * 1024), 2),
+                    "upload_mb": round(conn.get("upload", 0) / (1024 * 1024), 2),
+                    "start": conn.get("start", ""),
+                }
+            )
+
+        # 按实际出口聚合，让大模型直接读出 "谁走了代理、谁直连"
+        route_stats: Dict[str, Dict[str, Any]] = {}
+        for c in matched:
+            key = c["route"]
+            if key not in route_stats:
+                route_stats[key] = {
+                    "route": key,
+                    "connections": 0,
+                    "download_mb": 0.0,
+                    "upload_mb": 0.0,
+                    "rules": set(),
+                    "hosts": set(),
+                }
+            s = route_stats[key]
+            s["connections"] += 1
+            s["download_mb"] += c["download_mb"]
+            s["upload_mb"] += c["upload_mb"]
+            if c["rule"]:
+                s["rules"].add(c["rule"])
+            s["hosts"].add(c["host"])
+
+        summary = []
+        for s in route_stats.values():
+            summary.append(
+                {
+                    "route": s["route"],
+                    "is_proxy": s["route"].upper() not in ("DIRECT", "REJECT", ""),
+                    "connections": s["connections"],
+                    "download_mb": round(s["download_mb"], 2),
+                    "upload_mb": round(s["upload_mb"], 2),
+                    "hit_rules": sorted(s["rules"]),
+                    "sample_hosts": sorted(s["hosts"])[:5],
+                }
+            )
+        summary.sort(key=lambda x: x["download_mb"], reverse=True)
+
+        matched.sort(key=lambda x: x["download_mb"], reverse=True)
+        return {
+            "keyword": keyword,
+            "matched_connections": len(matched),
+            "route_summary": summary,
+            "top_connections": matched[:15],
+        }
+
+    async def get_rules(self) -> List[Dict[str, Any]]:
+        """获取当前生效的分流规则列表 (用于判断受保护域名实际走向哪个策略组)"""
+        res = await self._request("GET", "/rules")
+        return res.get("rules", [])
+
     async def get_active_connections(self) -> Dict[str, Any]:
         """获取当前活跃网络连接及各设备实时统计"""
         res = await self._request("GET", "/connections")
@@ -148,7 +234,8 @@ class NikkiClient:
             host = metadata.get("host") or metadata.get("destinationIP")
             rule = conn.get("rule", "Direct")
             chains = conn.get("chains", [])
-            proxy_node = chains[-1] if chains else "Direct"
+            # chains[0] 为实际出口节点 (或 DIRECT)，末位是顶层策略组
+            proxy_node = chains[0] if chains else "DIRECT"
 
             if src_ip not in device_stats:
                 device_stats[src_ip] = {

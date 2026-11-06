@@ -57,6 +57,19 @@ watchdog:
   # 主动汇报网络日报的每日触发时间 (24小时制，留空则不发)
   daily_report_time: "09:00"
 
+# 受保护服务声明 (Layer 1/2 智能护栏: Agent 测速推荐与节点切换时自动避开禁用节点)
+# 场景示例: Gemini 不对中国香港/澳门地区提供服务，若当前节点落在这些地区会直接报错
+protected_services:
+  - name: "Gemini (Google AI)"
+    domains: ["googleapis.com", "gemini.google.com", "ai.google.dev"]
+    forbidden_node_keywords: ["香港", "HK", "Hong Kong", "澳门", "Macao", "Macau"]
+    advice: "Gemini 不支持香港/澳门节点，请切换到 美国/日本/新加坡/台湾 等受支持地区的节点"
+  # 按需追加其他受限服务，例如:
+  # - name: "ChatGPT (OpenAI)"
+  #   domains: ["openai.com", "chatgpt.com", "oaistatic.com"]
+  #   forbidden_node_keywords: ["俄罗斯", "RU"]
+  #   advice: "OpenAI 不支持俄罗斯等地区节点"
+
 # 局域网 Web 控制台配置 (支持手机/电脑通过浏览器在局域网内直接访问)
 web:
   enabled: true

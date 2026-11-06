@@ -1,7 +1,7 @@
 import asyncio
-from datetime import datetime
+from datetime import datetime, timedelta
 import logging
-from typing import Optional
+from typing import Optional, Tuple
 from bot.feishu_bot import FeishuBotService
 from config.settings import WatchdogConfig
 from core.diagnostics import NetworkDiagnostics
@@ -27,7 +27,18 @@ class NetworkWatchdog:
 
         self._consecutive_failures = 0
         self._last_daily_report_date: Optional[str] = None
+        self._last_check_time: Optional[datetime] = None
         self._stop_event = asyncio.Event()
+
+        # 解析日报时间点 "HH:MM"，非法配置则停用日报功能
+        try:
+            h, m = map(int, (config.daily_report_time or "").split(":"))
+            self._daily_report_time: Optional[Tuple[int, int]] = (h, m)
+        except ValueError:
+            logger.warning(
+                f"日报时间配置无效: {config.daily_report_time!r}，日报功能已停用"
+            )
+            self._daily_report_time = None
 
     async def _auto_heal_proxy(self) -> str:
         """自愈逻辑：并发测速并自动切换到最佳可用节点"""
@@ -58,9 +69,29 @@ class NetworkWatchdog:
         except Exception as e:
             return f"自愈过程抛出异常: {str(e)}"
 
+    def _crossed_report_time(
+        self, now: datetime, prev: Optional[datetime]
+    ) -> bool:
+        """判断 (prev, now] 区间是否跨过了每日日报时间点 (兼容跨天巡检)"""
+        if self._daily_report_time is None or prev is None:
+            return False
+        occurrence = now.replace(
+            hour=self._daily_report_time[0],
+            minute=self._daily_report_time[1],
+            second=0,
+            microsecond=0,
+        )
+        # 检查今天与昨天两个时间点，覆盖巡检间隔跨午夜的情景
+        return any(
+            prev < occurrence - timedelta(days=d) <= now for d in (0, 1)
+        )
+
     async def run_single_check(self):
         """执行单次巡检与自愈动作"""
         logger.info("Watchdog 正在执行网络巡检...")
+        now = datetime.now()
+        prev_check = self._last_check_time
+        self._last_check_time = now
         report = await self.diagnostics.run_full_diagnosis()
 
         lan_ok = report["lan"]["alive"]
@@ -105,14 +136,11 @@ class NetworkWatchdog:
         else:
             self._consecutive_failures = 0
 
-        # 3. 定时网络健康日报 (例如每天 09:00)
-        now = datetime.now()
-        current_time_str = now.strftime("%H:%M")
+        # 3. 定时网络健康日报 (跨过时间点即触发，避免巡检时刻不精确命中而漏发)
         current_date_str = now.strftime("%Y-%m-%d")
 
         if (
-            self.config.daily_report_time
-            and current_time_str == self.config.daily_report_time
+            self._crossed_report_time(now, prev_check)
             and self._last_daily_report_date != current_date_str
         ):
             self._last_daily_report_date = current_date_str

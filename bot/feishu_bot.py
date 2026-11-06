@@ -108,11 +108,28 @@ class FeishuBotService:
         self, title: str, content: str, color: str = "red"
     ):
         """向所有管理员广播紧急告警"""
+        # 未配置飞书凭证时跳过推送，避免抛出异常中断巡检流程
+        if not self.config.app_id or not self.config.app_secret:
+            logger.warning(f"飞书未配置，已跳过告警推送: [{title}]")
+            return
+
+        sent = 0
         for admin_id in self.config.admin_open_ids:
-            if admin_id and admin_id != "ou_xxxxxxxxxxxxxxxxxxxxxx":
-                await self.send_card_message(
+            # 跳过空值与模板占位符 (真实 OpenID 不含 'x' 字符)
+            if not admin_id or admin_id.startswith("ou_x"):
+                continue
+            try:
+                ok = await self.send_card_message(
                     admin_id, title, content, color=color
                 )
+                sent += 1 if ok else 0
+            except Exception as e:
+                logger.error(f"向管理员 [{admin_id}] 推送告警失败: {e}")
+
+        if sent == 0:
+            logger.error(
+                f"告警 [{title}] 未能送达任何管理员，请检查 admin_open_ids 配置"
+            )
 
     async def handle_incoming_message(
         self, sender_open_id: str, text: str
@@ -180,5 +197,15 @@ class FeishuBotService:
             log_level=lark.LogLevel.INFO,
         )
 
+        def _run_ws():
+            try:
+                import lark_oapi.ws.client as ws_client
+                ws_loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(ws_loop)
+                ws_client.loop = ws_loop
+                cli.start()
+            except Exception as e:
+                logger.error(f"飞书 WebSocket 客户端运行异常: {e}", exc_info=True)
+
         logger.info("飞书 WebSocket 长连接客户端正在启动...")
-        threading.Thread(target=cli.start, daemon=True).start()
+        threading.Thread(target=_run_ws, daemon=True).start()

@@ -1,4 +1,6 @@
 import asyncio
+import re
+import sys
 import time
 from typing import Any, Dict, List, Optional
 import httpx
@@ -13,8 +15,18 @@ class NetworkDiagnostics:
         self.bypass_ip = bypass_ip
 
     async def _ping_host(self, host: str, timeout: float = 2.0) -> Optional[float]:
-        """通过 ICMP ping 测试指定主机的连通性及往返延迟 (ms)"""
-        cmd = ["ping", "-c", "2", "-W", str(int(timeout * 1000)), host]
+        """通过 ICMP ping 测试指定主机的连通性及往返延迟 (ms)
+
+        - Linux (含 Docker 容器) 的 -W 单位为秒，macOS/BSD 为毫秒，需按平台区分
+        - 延迟取自 ping 汇总行的 avg RTT，而非子进程总耗时估算
+        """
+        # Linux: -W 秒；macOS: -W 毫秒
+        if sys.platform == "darwin":
+            wait_arg = str(int(timeout * 1000))
+        else:
+            wait_arg = str(int(timeout))
+
+        cmd = ["ping", "-c", "2", "-W", wait_arg, host]
         start_time = time.time()
         try:
             proc = await asyncio.create_subprocess_exec(
@@ -25,10 +37,20 @@ class NetworkDiagnostics:
             stdout, _ = await asyncio.wait_for(
                 proc.communicate(), timeout=timeout + 1.5
             )
-            if proc.returncode == 0:
-                elapsed = (time.time() - start_time) * 1000 / 2
-                return round(elapsed, 1)
-            return None
+            if proc.returncode != 0:
+                return None
+
+            out = stdout.decode("utf-8", errors="ignore")
+            # Linux:  rtt min/avg/max/mdev = 8.912/9.541/10.170/0.439 ms
+            # macOS:  round-trip min/avg/max/stddev = 8.912/9.541/10.170/0.439 ms
+            # busybox: round-trip min/avg/max = 8.9/9.5/10.1 ms
+            m = re.search(r"=\s*([\d.]+)/([\d.]+)/([\d.]+)", out)
+            if m:
+                return float(m.group(2))
+
+            # 兑底：汇总行解析失败时退化为总耗时估算，保证返回可用数值
+            elapsed = (time.time() - start_time) * 1000 / 2
+            return round(elapsed, 1)
         except Exception:
             return None
 

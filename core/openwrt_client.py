@@ -115,12 +115,14 @@ class OpenWrtClient:
         return clients
 
     async def get_system_status(self) -> Dict[str, Any]:
-        """获取 OpenWrt 系统的负载、内存及运行时间"""
-        uptime_out = await self.execute_command("uptime")
-        mem_out = await self.execute_command(
-            "free -m 2>/dev/null || cat /proc/meminfo"
-        )
-        release_out = await self.execute_command("cat /etc/openwrt_release 2>/dev/null")
+        """获取 OpenWrt 系统的负载、内存及运行时间 (单次 SSH 批量执行以提升速度)"""
+        cmd = 'uptime; echo "===SPLIT==="; free -m 2>/dev/null || cat /proc/meminfo; echo "===SPLIT==="; cat /etc/openwrt_release 2>/dev/null'
+        combined_out = await self.execute_command(cmd, timeout=5)
+        
+        parts = combined_out.split("===SPLIT===")
+        uptime_out = parts[0].strip() if len(parts) > 0 else ""
+        mem_out = parts[1].strip() if len(parts) > 1 else ""
+        release_out = parts[2].strip() if len(parts) > 2 else ""
 
         # 提取系统版本
         release_desc = "OpenWrt"
@@ -129,9 +131,38 @@ class OpenWrtClient:
                 release_desc = line.split("=", 1)[1].replace('"', "").strip()
                 break
 
+        # 提取内存使用情况
+        mem_str = "正常"
+        for line in mem_out.splitlines():
+            if line.strip().startswith("Mem:"):
+                parts = line.split()
+                if len(parts) >= 3:
+                    try:
+                        total = int(parts[1])
+                        used = int(parts[2])
+                        if total > 10000:
+                            total //= 1024
+                            used //= 1024
+                        pct = round((used / total) * 100, 1) if total > 0 else 0
+                        mem_str = f"{used}MB / {total}MB ({pct}%)"
+                    except Exception:
+                        pass
+                break
+
+        # 提取运行时间与负载
+        uptime_clean = uptime_out
+        load_clean = "--"
+        if "load average:" in uptime_out:
+            p = uptime_out.split("load average:")
+            load_clean = p[1].strip()
+            up_part = p[0].strip()
+            if "up " in up_part:
+                uptime_clean = up_part.split("up ", 1)[1].rstrip(",")
+
         return {
-            "uptime": uptime_out,
-            "memory_summary": mem_out.splitlines()[:4],
+            "uptime": uptime_clean,
+            "load": load_clean,
+            "memory": mem_str,
             "release": release_desc,
         }
 

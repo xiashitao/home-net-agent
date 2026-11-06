@@ -1,4 +1,4 @@
-FROM python:3.11-slim
+FROM docker.m.daocloud.io/library/python:3.11-slim
 
 # 设置时区与环境变量
 ENV TZ=Asia/Shanghai \
@@ -6,6 +6,10 @@ ENV TZ=Asia/Shanghai \
     PYTHONUNBUFFERED=1
 
 WORKDIR /app
+
+# 换成国内中国科大高速源
+RUN sed -i 's@deb.debian.org@mirrors.ustc.edu.cn@g' /etc/apt/sources.list.d/debian.sources 2>/dev/null || \
+    sed -i 's@deb.debian.org@mirrors.ustc.edu.cn@g' /etc/apt/sources.list 2>/dev/null || true
 
 # 安装必要的系统网络排障工具 (ping, ip, curl)
 RUN apt-get update && apt-get install -y --no-install-recommends \

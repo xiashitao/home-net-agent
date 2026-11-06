@@ -145,14 +145,15 @@ def create_web_app(
         except Exception as e:
             logger.debug(f"Nikki API 状态查询异常或超时: {e}")
 
-        # 2. 尝试获取 OpenWrt 系统状态 (设定 2.5s 超时)
+        # 2. 尝试获取 OpenWrt 系统状态 (设定 5.0s 超时)
         try:
-            ow_status = await asyncio.wait_for(openwrt.get_system_status(), timeout=2.5)
+            ow_status = await asyncio.wait_for(openwrt.get_system_status(), timeout=5.0)
             if ow_status and not ow_status.get("error"):
                 status_data["openwrt"]["online"] = True
                 status_data["openwrt"]["uptime"] = ow_status.get("uptime", "未知")
                 status_data["openwrt"]["release"] = ow_status.get("release", "未知")
-                status_data["openwrt"]["load"] = ow_status.get("load")
+                status_data["openwrt"]["load"] = ow_status.get("load", "--")
+                status_data["openwrt"]["memory"] = ow_status.get("memory", "--")
         except Exception as e:
             logger.debug(f"OpenWrt 状态查询异常或超时: {e}")
 

@@ -54,6 +54,19 @@ class WebConfig(BaseModel):
     port: int = 8080
 
 
+class ProtectedService(BaseModel):
+    """受保护服务声明 (Layer 1/2: Agent 切换节点时的智能护栏)
+
+    例如 Gemini 不支持香港节点，可声明禁用关键词，
+    Agent 推荐/切换节点时会主动避开并硬性拦截危险切换。
+    """
+
+    name: str = ""
+    domains: List[str] = Field(default_factory=list)
+    forbidden_node_keywords: List[str] = Field(default_factory=list)
+    advice: str = ""
+
+
 class Settings(BaseModel):
     nikki: NikkiConfig = Field(default_factory=NikkiConfig)
     openwrt: OpenWrtConfig = Field(default_factory=OpenWrtConfig)
@@ -61,6 +74,7 @@ class Settings(BaseModel):
     feishu: FeishuConfig = Field(default_factory=FeishuConfig)
     watchdog: WatchdogConfig = Field(default_factory=WatchdogConfig)
     web: WebConfig = Field(default_factory=WebConfig)
+    protected_services: List[ProtectedService] = Field(default_factory=list)
 
 
 _cached_settings: Optional[Settings] = None

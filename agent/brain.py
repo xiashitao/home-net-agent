@@ -1,7 +1,7 @@
 import json
 from typing import Any, Dict, List, Optional
 from openai import AsyncOpenAI
-from config.settings import LLMConfig
+from config.settings import LLMConfig, ProtectedService
 from .tools import NetworkTools
 
 SYSTEM_PROMPT = """你是一个专业的家庭网络智能运维工程师 (Home Network Agent)。
@@ -19,13 +19,49 @@ SYSTEM_PROMPT = """你是一个专业的家庭网络智能运维工程师 (Home 
 3. 当用户想要“换个快节点”或“测速”时，先调用 `test_and_rank_nodes` 查看真实延迟，再调用 `switch_proxy_node` 切换。
 4. 任何涉及设备重启或模式切换的关键操作，向用户明确汇报执行结果与当前状态。
 5. 数据展示尽量使用清晰的列表或 Markdown 重点加粗，避免堆砌冗长未经整理的原始 JSON。
+6. 当用户询问“某个网站/App 是否走代理/VPN”（如 B站、YouTube、ChatGPT）时，调用 `trace_domain_route` 用简短关键词追踪实时连接出口；若返回 0 条匹配连接，提示用户先打开该应用产生流量后再查；结论要明确给出“走代理/直连”及依据的命中规则。
+7. 测速推荐与自动切换节点时，主动避开受保护服务声明的禁用节点 (见下方动态规则)；工具返回 refused=true 时，向用户解释原因并推荐替代节点，不要自行强制切换。
 """
+
+
+def _build_protected_services_prompt(
+    services: Optional[List[ProtectedService]],
+) -> str:
+    """将 config.yaml 中的受保护服务规则动态拼接入系统提示词 (Layer 1: 认知层)"""
+    if not services:
+        return ""
+    lines = [
+        "",
+        "家庭网络受保护服务与节点禁用规则 (由主人配置，切换节点时必须严格遵守):",
+    ]
+    for s in services:
+        lines.append(f"- 服务: {s.name}")
+        if s.domains:
+            lines.append(f"  关联域名: {', '.join(s.domains)}")
+        if s.forbidden_node_keywords:
+            lines.append(
+                f"  🚫 禁用节点关键词: {', '.join(s.forbidden_node_keywords)} "
+                "(节点名包含任一关键词即会破坏该服务)"
+            )
+        if s.advice:
+            lines.append(f"  💡 处理建议: {s.advice}")
+    lines.append(
+        "执行 test_and_rank_nodes 时优先推荐无 protected_violation 标记的节点；"
+        "用户要求切换到禁用节点时，先说明风险并确认后再携带 force=true 执行。"
+    )
+    return "\n".join(lines)
+
 
 
 class NetworkAgentBrain:
     """Agent 大脑核心：意图理解、多轮工具调用与自然语言回复生成"""
 
-    def __init__(self, config: LLMConfig, tools: NetworkTools):
+    def __init__(
+        self,
+        config: LLMConfig,
+        tools: NetworkTools,
+        protected_services: Optional[List[ProtectedService]] = None,
+    ):
         self.config = config
         self.tools = tools
         self.client = AsyncOpenAI(
@@ -33,6 +69,10 @@ class NetworkAgentBrain:
             base_url=config.base_url,
         )
         self.tool_schemas = tools.get_tool_schemas()
+        # Layer 1: 启动时将受保护服务规则动态注入系统提示词
+        self.system_prompt = SYSTEM_PROMPT + _build_protected_services_prompt(
+            protected_services
+        )
 
     async def chat(
         self,
@@ -41,7 +81,9 @@ class NetworkAgentBrain:
         max_turns: int = 5,
     ) -> str:
         """接收用户自然语言指令，通过 Function Calling 解决问题并生成最终回复"""
-        messages: List[Dict[str, Any]] = [{"role": "system", "content": SYSTEM_PROMPT}]
+        messages: List[Dict[str, Any]] = [
+            {"role": "system", "content": self.system_prompt}
+        ]
 
         # 拼接历史上下文
         if history:
