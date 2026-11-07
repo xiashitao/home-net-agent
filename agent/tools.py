@@ -43,12 +43,17 @@ class NetworkTools:
 
     @staticmethod
     def _is_main_group(group_name: str) -> bool:
-        """判断是否为主策略组 (主组承载绝大多数分流流量，含受保护服务)"""
-        return (group_name or "").strip().lower() in (
-            "global",
-            "proxy",
-            "节点选择",
-            "默认",
+        """判断是否为主策略组 (主组承载绝大多数分流流量，含受保护服务)
+
+        采用子串匹配以兼容机场配置中常见的 emoji 前缀组名，
+        如 "🔰 选择节点"、"♻️ 自动选择"、"✅ 默认" 等。
+        """
+        name = (group_name or "").strip().lower()
+        if not name:
+            return False
+        return any(
+            kw in name
+            for kw in ("global", "proxy", "选择节点", "节点选择", "默认")
         )
 
     async def _protected_groups(self) -> set:
