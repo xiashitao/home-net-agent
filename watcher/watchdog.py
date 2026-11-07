@@ -43,20 +43,11 @@ class NetworkWatchdog:
     async def _auto_heal_proxy(self) -> str:
         """自愈逻辑：并发测速并自动切换到最佳可用节点"""
         try:
-            groups = await self.nikki.get_proxy_groups()
-            target_group = next(
-                (
-                    g["name"]
-                    for g in groups
-                    if g["name"] in ["GLOBAL", "PROXY", "节点选择", "默认"]
-                ),
-                None,
-            )
-            if not target_group and groups:
-                target_group = groups[0]["name"]
-
-            if not target_group:
+            # 按当前运行模式探测真正生效的主组 (Rule 模式下切 GLOBAL 是无效自愈)
+            main_group = await self.nikki.get_effective_main_group()
+            if not main_group:
                 return "未找到可供切换的代理策略组。"
+            target_group = main_group["name"]
 
             ranked = await self.nikki.test_group_nodes_delay(target_group)
             alive_nodes = [n for n in ranked if n.get("alive")]

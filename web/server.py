@@ -205,13 +205,8 @@ def create_web_app(
         """并发测速策略组下的节点"""
         try:
             if not group:
-                groups = await nikki.get_proxy_groups()
-                for g in groups:
-                    if g.get("name") in ["GLOBAL", "PROXY", "节点选择", "默认"]:
-                        group = g.get("name")
-                        break
-                if not group and groups:
-                    group = groups[0].get("name")
+                main_group = await nikki.get_effective_main_group()
+                group = main_group.get("name") if main_group else None
 
             if not group:
                 raise HTTPException(status_code=400, detail="未找到可用策略组")

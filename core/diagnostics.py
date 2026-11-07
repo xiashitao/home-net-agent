@@ -88,14 +88,10 @@ class NetworkDiagnostics:
             nikki_version = ver_info.get("version", "未知")
             proxy_api_ok = True
 
-            # 获取当前选中的节点和延迟
-            groups = await self.nikki.get_proxy_groups()
-            for group in groups:
-                if group.get("name") in ["GLOBAL", "PROXY", "节点选择", "默认"]:
-                    current_node = group.get("now")
-                    break
-            if not current_node and groups:
-                current_node = groups[0].get("now")
+            # 获取真正生效的主组及其当前选中节点 (Rule 模式下 GLOBAL 无效)
+            main_group = await self.nikki.get_effective_main_group()
+            if main_group:
+                current_node = main_group.get("now")
 
             if current_node:
                 node_delay = await self.nikki.test_node_delay(current_node)

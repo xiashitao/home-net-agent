@@ -213,6 +213,47 @@ class NikkiClient:
             "top_connections": matched[:15],
         }
 
+    async def get_effective_main_group(self) -> Optional[Dict[str, Any]]:
+        """返回当前运行模式下真正承载分流流量的主策略组 (含 name/type/now/all)
+
+        - Global 模式: GLOBAL 组即总出口
+        - Rule/Direct 模式: GLOBAL 不生效，应返回主选择组 (如 "🔰 选择节点")；
+          关键词采用子串匹配以兼容 emoji 前缀组名，
+          兜底策略取候选节点最多的非 GLOBAL Selector 组 (主组通常挂全部节点)
+        """
+        groups = await self.get_proxy_groups()
+        if not groups:
+            return None
+
+        try:
+            configs = await self.get_configs()
+        except Exception:
+            configs = {}
+        mode = str(configs.get("mode") or "Rule").lower()
+
+        if mode == "global":
+            for g in groups:
+                if g["name"].upper() == "GLOBAL":
+                    return g
+            return groups[0]
+
+        # Rule 模式: 按关键词优先级寻找主选择组 (子串匹配兼容 "🔰 选择节点" 等)
+        for kw in ("节点选择", "选择节点"):
+            for g in groups:
+                if kw in g["name"] and g["name"].upper() != "GLOBAL":
+                    return g
+        for g in groups:
+            if g["name"].upper() != "GLOBAL" and (
+                "proxy" in g["name"].lower() or "默认" in g["name"]
+            ):
+                return g
+
+        # 兑底: 非 GLOBAL 且候选节点最多的 Selector 组
+        candidates = [g for g in groups if g["name"].upper() != "GLOBAL"]
+        if candidates:
+            return max(candidates, key=lambda g: len(g.get("all") or []))
+        return None
+
     async def get_rules(self) -> List[Dict[str, Any]]:
         """获取当前生效的分流规则列表 (用于判断受保护域名实际走向哪个策略组)"""
         res = await self._request("GET", "/rules")

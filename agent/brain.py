@@ -47,7 +47,8 @@ def _build_protected_services_prompt(
             lines.append(f"  💡 处理建议: {s.advice}")
     lines.append(
         "执行 test_and_rank_nodes 时优先推荐无 protected_violation 标记的节点；"
-        "用户要求切换到禁用节点时，先说明风险并确认后再携带 force=true 执行。"
+        "用户要求切换到禁用节点时，先说明风险并确认后再携带 force=true 执行；"
+        "任何情况下 (包括提供备选建议、注意事项时) 都不得推荐或暗示用户使用禁用节点。"
     )
     return "\n".join(lines)
 

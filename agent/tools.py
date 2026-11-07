@@ -232,16 +232,9 @@ class NetworkTools:
             elif name == "test_and_rank_nodes":
                 group_name = arguments.get("group_name")
                 if not group_name:
-                    groups = await self.nikki.get_proxy_groups()
-                    target_group = next(
-                        (
-                            g["name"]
-                            for g in groups
-                            if g["name"] in ["GLOBAL", "PROXY", "节点选择", "默认"]
-                        ),
-                        None,
-                    )
-                    group_name = target_group or (groups[0]["name"] if groups else "")
+                    # 按当前运行模式探测真正生效的主组 (Rule 模式下 GLOBAL 无效)
+                    main_group = await self.nikki.get_effective_main_group()
+                    group_name = main_group["name"] if main_group else ""
 
                 if not group_name:
                     return json.dumps({"error": "未检测到可用的策略组"})
