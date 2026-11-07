@@ -567,6 +567,19 @@
             <span id="overseasStatusText">检测中...</span>
           </div>
         </div>
+
+        <!-- 订阅流量余额 -->
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">📦 订阅流量</span>
+            <span id="subDot" class="status-dot" style="color: var(--text-muted)"></span>
+          </div>
+          <div id="subTrafficVal" class="card-value">--</div>
+          <div class="card-sub">
+            <span id="subExpireText">未配置订阅</span>
+            <span id="subUsageText"></span>
+          </div>
+        </div>
       </div>
 
       <!-- Diagnosis Action & Report -->
@@ -820,6 +833,7 @@
     async function init() {
       await loadServerInfo();
       await loadStatusOverview();
+      loadSubscription();  // 订阅流量 (低频数据, 不进入轮询)
       // 启动轻量定时轮询 (每 15 秒更新一次简要状态)
       setInterval(loadStatusOverview, 15000);
     }
@@ -836,6 +850,34 @@
         }
       } catch (e) {
         console.error('获取服务器基础信息失败', e);
+      }
+    }
+
+    // Load Subscription Traffic
+    async function loadSubscription() {
+      try {
+        const res = await fetch('/api/subscription');
+        const data = await res.json();
+        const dot = document.getElementById('subDot');
+        if (data.error) {
+          document.getElementById('subTrafficVal').textContent = '--';
+          document.getElementById('subExpireText').textContent = data.error.slice(0, 22);
+          dot.style.color = 'var(--text-muted)';
+          return;
+        }
+        document.getElementById('subTrafficVal').textContent = data.total_gb
+          ? `${data.remaining_gb} GB 剩余`
+          : `已用 ${data.used_gb} GB`;
+        document.getElementById('subExpireText').textContent = data.expire_date
+          ? `到期 ${data.expire_date} (${data.days_left}天)` : '';
+        document.getElementById('subUsageText').textContent = data.usage_percent != null
+          ? `已用 ${data.usage_percent}% / ${data.total_gb}GB` : '';
+        // 用量超过 85% 或 7 天内到期 → 黄色预警
+        const warn = (data.usage_percent != null && data.usage_percent >= 85) ||
+                     (data.days_left != null && data.days_left <= 7);
+        dot.style.color = warn ? 'var(--warning)' : 'var(--success)';
+      } catch (e) {
+        console.error('获取订阅信息失败', e);
       }
     }
 

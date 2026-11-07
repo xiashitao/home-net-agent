@@ -11,6 +11,10 @@ nikki:
   port: 9090
   # API 鉴权密钥 (Secret)，如果在 Nikki 网页中未设置可留空
   secret: ""
+  # 机场订阅地址 (可选): 填写后可查询流量余额/到期时间
+  # 查看方式: 机场官网 → 订阅/一键订阅 → 复制 Clash 订阅链接
+  # 填写后支持: AI 对话问“流量还剩多少” / Web 控制台订阅卡片 / 早间日报自动播报
+  # subscription_url: "https://example-airport.com/api/v1/client/subscribe?token=xxxx"
   # 默认用于测速的目标 URL
   test_url: "https://www.gstatic.com/generate_204"
   # 测速超时时间 (毫秒)

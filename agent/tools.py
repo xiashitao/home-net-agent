@@ -191,6 +191,14 @@ class NetworkTools:
             {
                 "type": "function",
                 "function": {
+                    "name": "get_traffic_balance",
+                    "description": "查询机场订阅的流量余额与到期时间 (已用/总量/剩余/用量百分比/到期日/剩余天数)，适用于用户询问“流量还剩多少”、“套餐什么时候过期”等问题",
+                    "parameters": {"type": "object", "properties": {}},
+                },
+            },
+            {
+                "type": "function",
+                "function": {
                     "name": "inspect_device_traffic",
                     "description": "查看当前各设备在旁路由上的实时活跃连接、下行/上行流量消耗及正在访问的域名",
                     "parameters": {"type": "object", "properties": {}},
@@ -307,6 +315,10 @@ class NetworkTools:
             elif name == "trace_domain_route":
                 keyword = arguments.get("keyword", "")
                 result = await self.nikki.find_connections_by_keyword(keyword)
+                return json.dumps(result, ensure_ascii=False)
+
+            elif name == "get_traffic_balance":
+                result = await self.nikki.get_subscription_info()
                 return json.dumps(result, ensure_ascii=False)
 
             elif name == "inspect_device_traffic":

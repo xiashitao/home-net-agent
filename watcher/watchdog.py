@@ -135,12 +135,37 @@ class NetworkWatchdog:
             and self._last_daily_report_date != current_date_str
         ):
             self._last_daily_report_date = current_date_str
+
+            # 订阅流量余额 (未配置或失败时静默跳过, 不影响日报)
+            sub_line = ""
+            try:
+                sub = await self.nikki.get_subscription_info()
+                if not sub.get("error"):
+                    sub_line = (
+                        f"- **订阅流量**: 已用 {sub['used_gb']}GB"
+                        + (
+                            f" / {sub['total_gb']}GB (剩余 {sub['remaining_gb']}GB,"
+                            f" 用量 {sub['usage_percent']}%)"
+                            if sub.get("total_gb")
+                            else ""
+                        )
+                        + (
+                            f"，套餐到期 {sub['expire_date']} (剩 {sub['days_left']} 天)"
+                            if sub.get("expire_date")
+                            else ""
+                        )
+                        + "\n"
+                    )
+            except Exception:
+                pass
+
             await self.bot.broadcast_alert(
                 "☀️ 家庭网络早间健康简报",
                 f"**汇报时间**: {report['timestamp']}\n\n"
                 f"- **局域网连通**: 正常 (旁路由延迟 {report['lan']['latency_ms']}ms)\n"
                 f"- **国内宽带**: 正常 (DNS延迟 {report['domestic']['dns_latency_ms']}ms)\n"
                 f"- **当前代理节点**: `{proxy_node}` (延迟: {node_delay}ms)\n"
+                f"{sub_line}"
                 f"- **综合结论**: {report['conclusion']}",
                 color="green",
             )

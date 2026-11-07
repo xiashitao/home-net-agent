@@ -172,6 +172,16 @@ def create_web_app(
                 content={"error": f"网络诊断异常: {str(e)}"},
             )
 
+    @app.get("/api/subscription")
+    async def get_subscription():
+        """查询机场订阅流量余额与到期时间"""
+        try:
+            return await asyncio.wait_for(
+                nikki.get_subscription_info(), timeout=20
+            )
+        except Exception as e:
+            return {"error": f"查询失败: {e}"}
+
     @app.get("/api/proxies")
     async def get_proxies():
         """获取代理模式、策略组和候选节点"""

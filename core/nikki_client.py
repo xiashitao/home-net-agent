@@ -1,4 +1,5 @@
 import asyncio
+from datetime import datetime
 from typing import Any, Dict, List, Optional
 import httpx
 from config.settings import NikkiConfig
@@ -212,6 +213,60 @@ class NikkiClient:
             "route_summary": summary,
             "top_connections": matched[:15],
         }
+
+    async def get_subscription_info(self) -> Dict[str, Any]:
+        """拉取机场订阅信息，返回流量用量与到期时间
+
+        依据通用订阅协议: 响应头
+        subscription-userinfo: upload=<B>; download=<B>; total=<B>; expire=<unix秒>
+        """
+        url = (self.config.subscription_url or "").strip()
+        if not url:
+            return {"error": "未配置订阅地址 (config.yaml → nikki.subscription_url)"}
+        try:
+            async with httpx.AsyncClient(timeout=15, follow_redirects=True) as client:
+                resp = await client.get(
+                    url, headers={"User-Agent": "clash-verge/v1.7.7"}
+                )
+        except Exception as e:
+            return {"error": f"订阅地址访问失败: {e}"}
+
+        userinfo = resp.headers.get("subscription-userinfo", "")
+        if not userinfo:
+            return {
+                "error": "订阅服务未返回流量信息 (响应头缺少 subscription-userinfo)，"
+                "请确认订阅地址正确或机场不支持该协议"
+            }
+
+        raw: Dict[str, int] = {}
+        for kv in userinfo.replace(" ", "").split(";"):
+            if "=" in kv:
+                k, v = kv.split("=", 1)
+                try:
+                    raw[k] = int(v)
+                except ValueError:
+                    continue
+
+        gb = 1024**3
+        upload = raw.get("upload", 0)
+        download = raw.get("download", 0)
+        total = raw.get("total", 0)
+        used = upload + download
+
+        result: Dict[str, Any] = {
+            "used_gb": round(used / gb, 2),
+            "upload_gb": round(upload / gb, 2),
+            "download_gb": round(download / gb, 2),
+            "total_gb": round(total / gb, 2) if total else None,
+            "remaining_gb": round((total - used) / gb, 2) if total else None,
+            "usage_percent": round(used / total * 100, 1) if total else None,
+        }
+        expire = raw.get("expire", 0)
+        if expire > 0:
+            expire_dt = datetime.fromtimestamp(expire)
+            result["expire_date"] = expire_dt.strftime("%Y-%m-%d")
+            result["days_left"] = (expire_dt - datetime.now()).days
+        return result
 
     async def get_effective_main_group(self) -> Optional[Dict[str, Any]]:
         """返回当前运行模式下真正承载分流流量的主策略组 (含 name/type/now/all)

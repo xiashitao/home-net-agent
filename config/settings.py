@@ -11,6 +11,8 @@ class NikkiConfig(BaseModel):
     secret: str = ""
     test_url: str = "https://www.gstatic.com/generate_204"
     timeout_ms: int = 3000
+    # 机场订阅地址 (用于查询流量余额/到期时间, 响应头 subscription-userinfo 协议)
+    subscription_url: str = ""
 
     @property
     def api_base_url(self) -> str:
